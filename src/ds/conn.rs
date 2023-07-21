@@ -57,9 +57,12 @@ pub(crate) async fn udp_conn(
             .await
             .expect("Failed to connect to target");
 
-        let interval = time::interval(Duration::from_millis(20));
+        let mut interval = time::interval(Duration::from_millis(20));
+        //make the interval a stream
+        let interval_stream = futures_util::stream::poll_fn(
+            |ctx| interval.poll_tick(ctx).map(|x| Some(x)));
 
-        let mut stream = select(interval.map(Either::Left), fwd_rx.map(Either::Right));
+        let mut stream = select(interval_stream.map(Either::Left), fwd_rx.map(Either::Right));
         let mut backoff = ExponentialBackoff::new(Duration::new(5, 0));
 
         loop {
@@ -118,8 +121,10 @@ pub(crate) async fn udp_conn(
 
     // I need the tokio extension for this, the futures extension to split codecs, and I can't import them both
     // Thanks for coordinating trait names to make using both nicely impossible
-    let fut = tokio::stream::StreamExt::timeout(udp_rx, Duration::from_secs(2)).map(Either::Left);
-    let mut stream = select(fut, rx.map(Either::Right));
+    let fut = tokio_stream::StreamExt::timeout(udp_rx, Duration::from_secs(2)).map(Either::Left);
+    let stream = select(fut, rx.map(Either::Right));
+
+    futures_util::pin_mut!(stream);
 
     let mut connected = true;
     while let Some(item) = stream.next().await {
@@ -139,9 +144,9 @@ pub(crate) async fn udp_conn(
                             let second = local.time().second() as u8;
                             let minute = local.time().minute() as u8;
                             let hour = local.time().hour() as u8;
-                            let day = local.date().day() as u8;
-                            let month = local.date().month0() as u8;
-                            let year = (local.date().year() - 1900) as u8;
+                            let day = local.date_naive().day() as u8;
+                            let month = local.date_naive().month0() as u8;
+                            let year = (local.date_naive().year() - 1900) as u8;
                             let tag = DTTag::new(micros, second, minute, hour, day, month, year);
                             state.send().lock().await.queue_udp(UdpTag::DateTime(tag));
                         }
@@ -258,7 +263,7 @@ pub(crate) async fn sim_conn(tx: UnboundedSender<Signal>) -> Result<()> {
     use tokio::time::timeout;
     const SOCK_TIMEOUT: Duration = Duration::from_millis(250);
 
-    let mut sock = UdpSocket::bind("127.0.0.1:1135").await?;
+    let sock = UdpSocket::bind("127.0.0.1:1135").await?;
     let mut buf = [0];
     let mut opmode = DsMode::Normal;
     loop {

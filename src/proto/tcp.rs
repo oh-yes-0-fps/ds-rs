@@ -11,11 +11,20 @@ pub mod outbound;
 /// The tokio codec for TCP traffic to and from the roboRIO
 pub struct DsTcpCodec;
 
-impl Encoder for DsTcpCodec {
-    type Item = TcpTag;
+impl Encoder<TcpTag> for DsTcpCodec {
+    // type Item = TcpTag;
     type Error = failure::Error;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    // fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    //     match item {
+    //         TcpTag::GameData(gd) => {
+    //             dst.extend(gd.construct().iter());
+    //         }
+    //         TcpTag::MatchInfo(mi) => dst.extend(mi.construct().iter()),
+    //     }
+    //     Ok(())
+    // }
+    fn encode(&mut self, item: TcpTag, dst: &mut BytesMut) -> Result<(), Self::Error> {
         match item {
             TcpTag::GameData(gd) => {
                 dst.extend(gd.construct().iter());

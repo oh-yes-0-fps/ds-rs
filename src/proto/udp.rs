@@ -30,11 +30,16 @@ impl Decoder for DsUdpCodec {
     }
 }
 
-impl Encoder for DsUdpCodec {
-    type Item = UdpControlPacket;
+impl Encoder<UdpControlPacket> for DsUdpCodec {
+    // type Item = UdpControlPacket;
     type Error = failure::Error;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    // fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    //     dst.extend(item.encode().iter());
+
+    //     Ok(())
+    // }
+    fn encode(&mut self, item: UdpControlPacket, dst: &mut BytesMut) -> Result<(), Self::Error> {
         dst.extend(item.encode().iter());
 
         Ok(())
